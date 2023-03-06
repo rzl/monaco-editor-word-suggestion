@@ -1,0 +1,24 @@
+{
+  "name": "monaco-editor-word-suggestion",
+  "version": "1.0.0",
+  "description": "monaco-editor-word-suggestion",
+  "main": "./dist/monaco-editor-word-suggestion.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rzl/monaco-editor-word-suggestion.git"
+  },
+  "keywords": [
+    "monaco",
+    "word",
+    "suggestion"
+  ],
+  "author": "rzl",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rzl/monaco-editor-word-suggestion/issues"
+  },
+  "homepage": "https://github.com/rzl/monaco-editor-word-suggestion#readme"
+}
