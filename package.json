@@ -4,7 +4,9 @@
   "description": "monaco-editor-word-suggestion",
   "main": "./dist/monaco-editor-word-suggestion.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack ./app/main.js --mode=production",
+    "dev": "webpack-dev-server --host 0.0.0.0"
   },
   "repository": {
     "type": "git",
@@ -20,5 +22,10 @@
   "bugs": {
     "url": "https://github.com/rzl/monaco-editor-word-suggestion/issues"
   },
-  "homepage": "https://github.com/rzl/monaco-editor-word-suggestion#readme"
+  "homepage": "https://github.com/rzl/monaco-editor-word-suggestion#readme",
+  "devDependencies": {
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.11.1"
+  }
 }

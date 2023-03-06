@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>monaco-editor-word-suggestion</title>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+	</head>
+	<body>
+		<h2>monaco-editor-word-suggestion</h2>
+		<div id="container" style="width: 800px; height: 600px; border: 1px solid grey"></div>
+
+		<script src="./dist/monaco-editor-word-suggestion.js"></script>
+		<!-- OR ANY OTHER AMD LOADER HERE INSTEAD OF loader.js -->
+		<script src="./public/release/min/vs/loader.js"></script>
+		<script>
+			require.config({ paths: { vs: './public/release/min/vs' } });
+
+			require(['vs/editor/editor.main'], function () {
+				var bbb = new Date()
+				var mws = new MonacoEditorWordSuggestion({
+					monaco: window.monaco,
+					rules: [
+						{
+							token: 'that',
+							target: bbb,
+							foreground: 'e23aff',
+							fontStyle: ''
+						}
+					]
+				})
+				var editor = monaco.editor.create(document.getElementById('container'), {
+					value: ['function x() {', '\tconsole.log("Hello world!");', '}'].join('\n'),
+					language: 'javascript',
+					theme: mws.themeName,
+					'semanticHighlighting.enabled': true
+				});
+			});
+		</script>
+	</body>
+</html>
