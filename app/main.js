@@ -115,7 +115,7 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
     keysSetCache() {
 
     }
-    async ongGetAllkeys(wordword, setCahce) {}
+    async ongGetAllkeys(wordword, setCahce) { }
     async getAllkeys(wordword, obj) {
         if (this.keysSetCache[wordword]) {
             await this.ongGetAllkeys(wordword, this.keysSetCache[wordword])
@@ -128,11 +128,11 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
             keys.push.apply(keys, Object.getOwnPropertySymbols(temp))
             temp = Object.getPrototypeOf(temp)
         }
-        this.keysSetCache[wordword] = new Set(keys.filter(o => typeof o == 'string'))
+        this.keysSetCache[wordword] = new Set(keys.filter(o => typeof o == 'string' && o.indexOf('_') != 0))
         await this.ongGetAllkeys(wordword, this.keysSetCache[wordword])
         return [...this.keysSetCache[wordword]]
     }
-    async onResolveWordHoverData(wordword, cache) {}
+    async onResolveWordHoverData(wordword, cache) { }
     async resolveWordHoverData(wordword) {
         if (!this.documentCache[wordword]) {
             let obj = await this.resolveObj(wordword)
@@ -142,7 +142,7 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
 
         return this.documentCache[wordword]
     }
-    async onHover(wordword, res) {}
+    async onHover(wordword, res) { }
     registerHover() {
         let { monaco, language } = this
         if (this.provider.hover) return
@@ -184,15 +184,21 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
     }
     async resolveObj(wordword) {
         try {
-            let rule = this.resolveRule(wordword)
-            var target = rule.target
-            if (rule.fnTarget) {
-                target = await rule.fnTarget()
-            }
-            if (wordword[wordword.length - 1] == '.') {
-                return eval(wordword.substring(0, wordword.length - 1).replace(rule.token, 'target'));
+            var rule = this.resolveRule(wordword)
+            if (rule) {
+                var target = rule.target
+                if (rule.fnTarget) {
+                    target = await rule.fnTarget()
+                }
+                var str = ''
+                if (wordword[wordword.length - 1] == '.') {
+                    str = wordword.substring(0, wordword.length - 1).replace(rule.token, 'target');
+                } else {
+                    str = wordword.substring(0, wordword.length).replace(rule.token, 'target');
+                }
+                return eval(str)
             } else {
-                return eval(wordword.substring(0, wordword.length).replace(rule.token, 'target'));
+                return undefined
             }
         } catch (e) {
             return undefined
@@ -201,7 +207,13 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
     resolveSuggestion(wordword, obj, k) {
         var { monaco, language } = this
         if (this.documentCache[wordword + k]) {
-            return this.documentCache[wordword + k]
+            var s = this.documentCache[wordword + k]
+            return {
+                label: s.label,
+                kind: s.kind,
+                documentation: s.documentation,
+                insertText: s.insertText
+            }
         }
         try {
             let tmp = k !== '' ? obj[k] : obj
@@ -226,40 +238,57 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
         if (!this.documentCache[wordword + k]) {
             this.documentCache[wordword + k] = JSON.parse(JSON.stringify(res))
         }
-        return this.documentCache[wordword + k]
+        var s = this.documentCache[wordword + k]
+        return {
+            label: s.label,
+            kind: s.kind,
+            documentation: s.documentation,
+            insertText: s.insertText
+        }
     }
-    async onCompletionItem(wordword, res) {}
+    async onCompletionItem(wordword, res) { }
     registerCompletionItem() {
         var { monaco, language } = this
         if (this.provider.completionItem) return
         this.provider.completionItem = monaco.languages.registerCompletionItemProvider(language, {
             triggerCharacters: '.',
             provideCompletionItems: async (model, position) => {
-                var wordword = model.getValueInRange({
-                    startLineNumber: position.lineNumber,
-                    startColumn: 1,
-                    endLineNumber: position.lineNumber,
-                    endColumn: position.column
-                }).replace(/\t/g, ' ').trim();
-                if (wordword[wordword.length - 1] == '.') {
-                    wordword = wordword.substring(wordword.lastIndexOf(' ') + 1, wordword.length)
-                }
+                try {
+                    var wordword = model.getValueInRange({
+                        startLineNumber: position.lineNumber,
+                        startColumn: 1,
+                        endLineNumber: position.lineNumber,
+                        endColumn: position.column
+                    }).replace(/\t/g, ' ').trim();
+                    if (wordword[wordword.length - 1] == '.') {
+                        wordword = wordword.substring(wordword.lastIndexOf(' ') + 1, wordword.length)
+                    }
 
-                let obj = await this.resolveObj(wordword)
-                if (obj) {
-                    let suggestions = (await this.getAllkeys(wordword, obj)).map((k) => {
-                        return this.resolveSuggestion(wordword, obj, k)
-                    });
-                    var res =  { suggestions }
+                    let obj = await this.resolveObj(wordword)
+                    debugger
+                    if (obj) {
+                        var keys = await this.getAllkeys(wordword, obj)
+                        let suggestions = keys.map((k) => {
+                            return this.resolveSuggestion(wordword, obj, k)
+                        });
+                        var res = { suggestions }
+                        await this.onCompletionItem(wordword, res)
+                        return res
+                    }
+
+                    var res = {
+                        suggestions: this.defaultSuggestion
+                    };
+                    await this.onCompletionItem(wordword, res)
+                    return res
+
+                } catch (e) {
+                    var res = {
+                        suggestions: this.defaultSuggestion
+                    };
                     await this.onCompletionItem(wordword, res)
                     return res
                 }
-
-                var res = {
-                    suggestions: this.defaultSuggestion
-                };
-                await this.onCompletionItem(wordword, res)
-                return res
             }
         });
     }
