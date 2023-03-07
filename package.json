@@ -1,6 +1,6 @@
 {
   "name": "monaco-editor-word-suggestion",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "monaco-editor-word-suggestion",
   "main": "./dist/monaco-editor-word-suggestion.js",
   "scripts": {
