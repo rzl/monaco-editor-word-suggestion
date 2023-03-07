@@ -9,7 +9,7 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
     provider = {
         color: undefined,
         hover: undefined,
-        completion: undefined
+        completionItem: undefined
     }
     rules = [
         {
@@ -81,7 +81,7 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
             switch (type) {
                 case 'hover': this.registerHover()
                     break;
-                case 'completion': this.registerCompletionItem()
+                case 'completionItem': this.registerCompletionItem()
                     break;
                 case 'color':
                     this.registerDocumentSemanticTokens()
@@ -100,19 +100,27 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
             switch (type) {
                 case 'hover': this.provider.hover && this.provider.hover.dispose()
                     break;
-                case 'completion': this.provider.completion && this.provider.completion.dispose()
+                case 'completionItem': this.provider.completionItem && this.provider.completionItem.dispose()
                     break;
                 case 'color':
                     this.provider.color && this.provider.color.dispose()
                     break;
             }
         } else {
-            this.provider.completion && this.provider.completion.dispose()
+            this.provider.completionItem && this.provider.completionItem.dispose()
             this.provider.color && this.provider.color.dispose()
             this.provider.hover && this.provider.hover.dispose()
         }
     }
-    getAllkeys(obj) {
+    keysSetCache() {
+
+    }
+    async ongGetAllkeys(wordword, setCahce) {}
+    async getAllkeys(wordword, obj) {
+        if (this.keysSetCache[wordword]) {
+            await this.ongGetAllkeys(wordword, this.keysSetCache[wordword])
+            return [...this.keysSetCache[wordword]]
+        }
         const keys = []
         let temp = obj
         while (temp) {
@@ -120,12 +128,11 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
             keys.push.apply(keys, Object.getOwnPropertySymbols(temp))
             temp = Object.getPrototypeOf(temp)
         }
-
-        return [...new Set(keys)]
+        this.keysSetCache[wordword] = new Set(keys.filter(o => typeof o == 'string'))
+        await this.ongGetAllkeys(wordword, this.keysSetCache[wordword])
+        return [...this.keysSetCache[wordword]]
     }
-    async onResolveWordHoverData(wordword, cache) {
-
-    }
+    async onResolveWordHoverData(wordword, cache) {}
     async resolveWordHoverData(wordword) {
         if (!this.documentCache[wordword]) {
             let obj = await this.resolveObj(wordword)
@@ -135,6 +142,7 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
 
         return this.documentCache[wordword]
     }
+    async onHover(wordword, res) {}
     registerHover() {
         let { monaco, language } = this
         if (this.provider.hover) return
@@ -154,12 +162,14 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
                     }
                     let data = await this.resolveWordHoverData(wordword)
                     if (data) {
-                        return {
+                        var res = {
                             contents: [
                                 { value: `**${data.label}**` },
                                 { value: data.documentation.value }
                             ]
                         };
+                        await this.onHover(wordword, res)
+                        return res
                     }
                 } catch (e) {
                     //  console.error(e)
@@ -218,10 +228,11 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
         }
         return this.documentCache[wordword + k]
     }
+    async onCompletionItem(wordword, res) {}
     registerCompletionItem() {
         var { monaco, language } = this
-        if (this.provider.completion) return
-        this.provider.completion = monaco.languages.registerCompletionItemProvider(language, {
+        if (this.provider.completionItem) return
+        this.provider.completionItem = monaco.languages.registerCompletionItemProvider(language, {
             triggerCharacters: '.',
             provideCompletionItems: async (model, position) => {
                 var wordword = model.getValueInRange({
@@ -236,17 +247,19 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
 
                 let obj = await this.resolveObj(wordword)
                 if (obj) {
-                    let suggestions = this.getAllkeys(obj).filter(o => typeof o == 'string').sort((a, b) => a.indexOf('_')).map((k) => {
-                        var res = this.resolveSuggestion(wordword, obj, k)
-
-                        return res
+                    let suggestions = (await this.getAllkeys(wordword, obj)).map((k) => {
+                        return this.resolveSuggestion(wordword, obj, k)
                     });
-                    return { suggestions }
+                    var res =  { suggestions }
+                    await this.onCompletionItem(wordword, res)
+                    return res
                 }
 
-                return {
+                var res = {
                     suggestions: this.defaultSuggestion
                 };
+                await this.onCompletionItem(wordword, res)
+                return res
             }
         });
     }

@@ -35,10 +35,9 @@
 					async onResolveWordHoverData(wordword, cache) {
 						return new Promise((rs) => {
 							setTimeout(() => {
-								cache.documentation.value = 'hello'
 								console.log(wordword, cache)
 								rs()
-							}, 2000)
+							})
 						})
 					}
 				})
