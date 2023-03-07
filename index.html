@@ -24,8 +24,23 @@
 							target: bbb,
 							foreground: 'e23aff',
 							fontStyle: ''
+						},
+						{
+							token: 'mws',
+							fnTarget: () => { console.log(mws); return mws},
+							foreground: '569cd6',
+							fontStyle: ''
 						}
-					]
+					],
+					async onResolveWordHoverData(wordword, cache) {
+						return new Promise((rs) => {
+							setTimeout(() => {
+								cache.documentation.value = 'hello'
+								console.log(wordword, cache)
+								rs()
+							}, 2000)
+						})
+					}
 				})
 				var editor = monaco.editor.create(document.getElementById('container'), {
 					value: ['function x() {', '\tconsole.log("Hello world!");', '}'].join('\n'),

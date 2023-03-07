@@ -5,7 +5,7 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
     disposeOther = true
     tokenPattern = new RegExp('([a-zA-Z]+)', 'g');
     baseTheme = 'vs-dark'
-    themeName = 'word-suggest'
+    themeName = 'vs-dark'
     provider = {
         color: undefined,
         hover: undefined,
@@ -17,12 +17,18 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
             target: window.vue,
             foreground: 'e23aff',
             fontStyle: ''
+        },
+        {
+            token: 'theDate',
+            fnTarget: () => new Date(),
+            foreground: 'e23aff',
+            fontStyle: ''
         }
     ]
     documentCache = {
         ['that']: {
             label: 'that',
-            documentation: '## that document'
+            documentation: { value: '## that document' }
         }
     }
     get defaultSuggestion() {
@@ -117,7 +123,16 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
 
         return [...new Set(keys)]
     }
+    async onResolveWordHoverData(wordword, cache) {
+
+    }
     async resolveWordHoverData(wordword) {
+        if (!this.documentCache[wordword]) {
+            let obj = await this.resolveObj(wordword)
+            this.resolveSuggestion(wordword, obj, '')
+        }
+        await this.onResolveWordHoverData(wordword, this.documentCache[wordword])
+
         return this.documentCache[wordword]
     }
     registerHover() {
@@ -127,7 +142,7 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
             provideHover: async (model, position) => {
                 try {
                     let pos = model.getWordAtPosition(position)
-                    if (!pos) return 
+                    if (!pos) return
                     var wordword = model.getValueInRange({
                         startLineNumber: position.lineNumber,
                         startColumn: 1,
@@ -142,12 +157,12 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
                         return {
                             contents: [
                                 { value: `**${data.label}**` },
-                                { value: '```javascript\n' + data.documentation + '\n```' }
+                                { value: data.documentation.value }
                             ]
                         };
                     }
                 } catch (e) {
-                    console.error(e)
+                    //  console.error(e)
                 }
             }
         });
@@ -157,13 +172,51 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
             return wordword.startsWith(`${rule.token}.`)
         })
     }
-    resolveObj(wordword, rule) {
+    async resolveObj(wordword) {
         try {
+            let rule = this.resolveRule(wordword)
             var target = rule.target
-            return eval(wordword.substring(0, wordword.length - 1).replace(rule.token, 'target'));
+            if (rule.fnTarget) {
+                target = await rule.fnTarget()
+            }
+            if (wordword[wordword.length - 1] == '.') {
+                return eval(wordword.substring(0, wordword.length - 1).replace(rule.token, 'target'));
+            } else {
+                return eval(wordword.substring(0, wordword.length).replace(rule.token, 'target'));
+            }
         } catch (e) {
             return undefined
         }
+    }
+    resolveSuggestion(wordword, obj, k) {
+        var { monaco, language } = this
+        let tmp = k !== '' ? obj[k] : obj
+        if (this.documentCache[wordword + k]) {
+            return this.documentCache[wordword + k]
+        }
+        try {
+            var res = {
+                label: k,
+                kind: typeof tmp === 'function' ? monaco.languages.CompletionItemKind.Function : monaco.languages.CompletionItemKind.Property,
+                documentation: {
+                    value: '```javascript\n' +
+                        (typeof tmp === 'function' ? tmp.toString() : k) +
+                        '\n```'
+                },
+                insertText: k
+            }
+        } catch (e) {
+            res = {
+                label: k,
+                kind: monaco.languages.CompletionItemKind.Property,
+                documentation: k,
+                insertText: k
+            }
+        }
+        if (!this.documentCache[wordword + k]) {
+            this.documentCache[wordword + k] = JSON.parse(JSON.stringify(res))
+        }
+        return this.documentCache[wordword + k]
     }
     registerCompletionItem() {
         var { monaco, language } = this
@@ -180,38 +233,17 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
                 if (wordword[wordword.length - 1] == '.') {
                     wordword = wordword.substring(wordword.lastIndexOf(' ') + 1, wordword.length)
                 }
-                let rule = this.resolveRule(wordword)
-                if (rule) {
-                    try {
-                        let obj = this.resolveObj(wordword, rule)
-                        if (obj) {
-                            let suggestions = this.getAllkeys(obj).filter(o => typeof o == 'string').sort((a, b) => a.indexOf('_')).map((k) => {
-                                var res = {}
-                                try {
-                                    var res = {
-                                        label: k,
-                                        kind: typeof obj[k] === 'function' ? monaco.languages.CompletionItemKind.Function : monaco.languages.CompletionItemKind.Property,
-                                        documentation: typeof obj[k] === 'function' ? obj[k].toString() : k,
-                                        insertText: k
-                                    }
-                                    this.documentCache[wordword + k] = JSON.parse(JSON.stringify(res))
-                                } catch (e) {
-                                    res = {
-                                        label: k,
-                                        kind: monaco.languages.CompletionItemKind.Property,
-                                        documentation: k,
-                                        insertText: k
-                                    }
-                                }
-                                return res
-                            });
-                            return { suggestions }
-                        }
 
-                    } catch (e) {
-                        console.error(e)
-                    }
+                let obj = await this.resolveObj(wordword)
+                if (obj) {
+                    let suggestions = this.getAllkeys(obj).filter(o => typeof o == 'string').sort((a, b) => a.indexOf('_')).map((k) => {
+                        var res = this.resolveSuggestion(wordword, obj, k)
+
+                        return res
+                    });
+                    return { suggestions }
                 }
+
                 return {
                     suggestions: this.defaultSuggestion
                 };
