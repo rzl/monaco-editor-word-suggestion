@@ -200,11 +200,11 @@ window.MonacoEditorWordSuggestion = class MonacoEditorWordSuggestion {
     }
     resolveSuggestion(wordword, obj, k) {
         var { monaco, language } = this
-        let tmp = k !== '' ? obj[k] : obj
         if (this.documentCache[wordword + k]) {
             return this.documentCache[wordword + k]
         }
         try {
+            let tmp = k !== '' ? obj[k] : obj
             var res = {
                 label: k,
                 kind: typeof tmp === 'function' ? monaco.languages.CompletionItemKind.Function : monaco.languages.CompletionItemKind.Property,
